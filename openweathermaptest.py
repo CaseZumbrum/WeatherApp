@@ -79,4 +79,4 @@ info["currkind"] = current["weather"][0]["description"]
 info["currhumidity"] = current["main"]["humidity"]
 info["high"] = round(K_to_F(current["main"]["temp_max"]))
 info["low"] = round(K_to_F(current["main"]["temp_min"]))
-print(Forecast["list"][0])
+print(Forecast["list"][0]["weather"])
