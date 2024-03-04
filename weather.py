@@ -35,7 +35,6 @@ async def getweather():
         info['low'] = forecast.lowest_temperature
         info["rain"] = (0,0)
         for hourly in forecast.hourly:
-            print(hourly)
             if(now.hour < hourly.time.hour):
                 if "Showers" in str(hourly.kind):
                     info["rain"] = (1,hourly.time.hour - now.hour)
@@ -51,12 +50,7 @@ def printscreen(info):
         logging.info("epd7in5_V2 Demo")
         epd = epd7in5_V2.EPD()
         epd.init()
-        '''
-        logging.info("init and Clear")
-        epd.init()
-        epd.Clear()
-        time.sleep(2)
-        '''
+       
         font24 = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 50)
         
 
@@ -66,12 +60,12 @@ def printscreen(info):
         draw.text((10, 60), f'{info["currkind"]}', font = font24, fill = 0)
         draw.text((10, 110), f'High: {info["high"]}', font = font24, fill = 0)
         draw.text((10, 160), f'Low: {info["low"]}', font = font24, fill = 0)
+
         if(info["rain"][0] == 1):
             draw.text((10, 210), f'Chance of rain in {info["rain"][1]} hours', font = font24, fill = 0)
+
         epd.display(epd.getbuffer(Himage))
         time.sleep(2)
-        
-
         logging.info("Goto Sleep...")
         epd.sleep()
         
@@ -94,10 +88,13 @@ if __name__ ==  "__main__":
         printscreen(info)
         while(True):
             info = asyncio.run(getweather())
+
             time215minute = (60*15) - time.time()%(60*15)
             print(f"Waiting for {time215minute}")
             time.sleep(time215minute)
+            
             printscreen(info)
+
     except KeyboardInterrupt:   
         logging.info("ctrl + c:")
         epd = epd7in5_V2.EPD()
