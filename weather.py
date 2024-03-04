@@ -2,8 +2,12 @@
 # -*- coding:utf-8 -*-
 import sys
 import os
+import requests, json
+
+
 picdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'pic')
 libdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'lib')
+
 if os.path.exists(libdir):
     sys.path.append(libdir)
 
@@ -20,27 +24,30 @@ import os
 import time
 
 
-async def getweather():
-    # declare the client. the measuring unit used defaults to the metric system (celcius, km/h, etc.)
-    async with python_weather.Client(unit=python_weather.IMPERIAL) as client:
-        # fetch a weather forecast from a city
-        now = datetime.now()
-        weather = await client.get('Gainesville')
-        info = {}
-        forecast = next(weather.forecasts)
-        # returns the current day's forecast temperature (int)
-        info["currtemp"] = weather.current.temperature
-        info['currkind'] = str(weather.current.kind)
-        info['high'] = forecast.highest_temperature
-        info['low'] = forecast.lowest_temperature
-        info["rain"] = (0,0)
-        for hourly in forecast.hourly:
-            if(now.hour < hourly.time.hour):
-                if "Showers" in str(hourly.kind):
-                    info["rain"] = (1,hourly.time.hour - now.hour)
-                    break
-        return info
+def K_to_F(K):
+    return (K - 273.15) * 9 / 5 + 32
 
+
+def getweather():
+    current = response = requests.get(
+        "http://api.openweathermap.org/data/2.5/weather?appid=e91b4794a9aac2f29d302a924907e5ac&q=Gainesville").json()
+    Forecast = requests.get(
+        "http://api.openweathermap.org/data/2.5/forecast?lat=29.6520&lon=-82.3250&appid=e91b4794a9aac2f29d302a924907e5ac").json()
+    info = {}
+    info["currtemp"] = round(K_to_F(current["main"]["temp"]))
+    info["currkind"] = current["weather"][0]["description"]
+    info["currhumidity"] = current["main"]["humidity"]
+    info["high"] = round(K_to_F(current["main"]["temp_max"]))
+    info["low"] = round(K_to_F(current["main"]["temp_min"]))
+    info["rain"] = [0, 0]
+    for i in range(3):
+        id = Forecast["list"][i]["weather"][0]["id"]
+        if id // 100 == 2 or id // 100 == 3 or id // 100 == 5:
+            info["rain"][0] = 1
+            info["rain"][1] = round((Forecast["list"][i]["dt"] / (3600)) - time.time() / 3600)
+            break
+
+    return info
 
 
 def printscreen(info):
@@ -60,9 +67,10 @@ def printscreen(info):
         draw.text((10, 60), f'{info["currkind"]}', font = font24, fill = 0)
         draw.text((10, 110), f'High: {info["high"]}', font = font24, fill = 0)
         draw.text((10, 160), f'Low: {info["low"]}', font = font24, fill = 0)
+        draw.text((10, 210), f'Humidity: {info["currhumidity"]}', font=font24, fill=0)
 
         if(info["rain"][0] == 1):
-            draw.text((10, 210), f'Chance of rain in {info["rain"][1]} hours', font = font24, fill = 0)
+            draw.text((10, 260), f'Chance of rain in about {info["rain"][1]} hours', font = font24, fill = 0)
 
         epd.display(epd.getbuffer(Himage))
         time.sleep(2)
@@ -87,7 +95,7 @@ if __name__ ==  "__main__":
         info = asyncio.run(getweather())
         printscreen(info)
         while(True):
-            info = asyncio.run(getweather())
+            info = getweather()
 
             time215minute = (60*15) - time.time()%(60*15)
             print(f"Waiting for {time215minute}")

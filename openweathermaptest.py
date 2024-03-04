@@ -1,5 +1,6 @@
 # import required modules
 import requests, json
+import time
 
 '''
 # Enter your API key here
@@ -70,13 +71,22 @@ else:
 '''
 def K_to_F(K):
     return (K - 273.15) * 9/5 + 32
+def getweather():
+    current = response = requests.get("http://api.openweathermap.org/data/2.5/weather?appid=e91b4794a9aac2f29d302a924907e5ac&q=Gainesville").json()
+    Forecast =requests.get("http://api.openweathermap.org/data/2.5/forecast?lat=29.6520&lon=-82.3250&appid=e91b4794a9aac2f29d302a924907e5ac").json()
+    info = {}
+    info["currtemp"] = round(K_to_F(current["main"]["temp"]))
+    info["currkind"] = current["weather"][0]["description"]
+    info["currhumidity"] = current["main"]["humidity"]
+    info["high"] = round(K_to_F(current["main"]["temp_max"]))
+    info["low"] = round(K_to_F(current["main"]["temp_min"]))
+    info["rain"] = [0,0]
+    for i in range(3):
+        id = Forecast["list"][i]["weather"][0]["id"]
+        if  id // 100 == 2 or id // 100 == 3 or id // 100 == 5:
+            info["rain"][0] = 1
+            info["rain"][1] = round((Forecast["list"][i]["dt"] / (3600)) - time.time() / 3600)
+            break
 
-current = response = requests.get("http://api.openweathermap.org/data/2.5/weather?appid=e91b4794a9aac2f29d302a924907e5ac&q=Gainesville").json()
-Forecast =requests.get("http://api.openweathermap.org/data/2.5/forecast?lat=29.6520&lon=-82.3250&appid=e91b4794a9aac2f29d302a924907e5ac").json()
-info = {}
-info["currtemp"] = round(K_to_F(current["main"]["temp"]))
-info["currkind"] = current["weather"][0]["description"]
-info["currhumidity"] = current["main"]["humidity"]
-info["high"] = round(K_to_F(current["main"]["temp_max"]))
-info["low"] = round(K_to_F(current["main"]["temp_min"]))
-print(Forecast["list"][0]["weather"])
+    return info
+
