@@ -1,13 +1,13 @@
 #!/usr/bin/python
 # -*- coding:utf-8 -*-
 import sys
-import os
 import requests, json
 import logging
 from waveshare_epd import epd7in5_V2
 from PIL import Image,ImageDraw,ImageFont
 import os
 import time
+from io import BytesIO
 
 picdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'pic')
 libdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'lib')
@@ -28,9 +28,11 @@ def getweather():
     info["currtemp"] = round(K_to_F(current["main"]["temp"]))
     info["currkind"] = current["weather"][0]["description"]
     info["currhumidity"] = current["main"]["humidity"]
+    info["icon"] = current["weather"][0]["icon"]
     info["high"] = round(K_to_F(current["main"]["temp_max"]))
     info["low"] = round(K_to_F(current["main"]["temp_min"]))
     info["rain"] = [0, 0]
+
     for i in range(3):
         id = Forecast["list"][i]["weather"][0]["id"]
         if id // 100 == 2 or id // 100 == 3 or id // 100 == 5:
@@ -45,6 +47,10 @@ def printscreen(info):
     logging.basicConfig(level=logging.DEBUG)
 
     try:
+        #TESTING THIS RN
+        response = requests.get(f"https://openweathermap.org/img/wn/{info['icon']}@2x.png")
+        img = Image.open(BytesIO(response.content))
+
         logging.info("epd7in5_V2 Demo")
         epd = epd7in5_V2.EPD()
         epd.init()
@@ -62,6 +68,9 @@ def printscreen(info):
 
         if(info["rain"][0] == 1):
             draw.text((10, 260), f'Chance of rain in about {info["rain"][1]} hours', font = font24, fill = 0)
+
+        #TESTING THIS RN
+        Himage.paste(img, (300,300))
 
         epd.display(epd.getbuffer(Himage))
         time.sleep(2)
