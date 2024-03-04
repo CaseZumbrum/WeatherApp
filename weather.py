@@ -3,26 +3,17 @@
 import sys
 import os
 import requests, json
-
+import logging
+from waveshare_epd import epd7in5_V2
+from PIL import Image,ImageDraw,ImageFont
+import os
+import time
 
 picdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'pic')
 libdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'lib')
 
 if os.path.exists(libdir):
     sys.path.append(libdir)
-
-import logging
-from waveshare_epd import epd7in5_V2
-import time
-from PIL import Image,ImageDraw,ImageFont
-import traceback
-
-import python_weather
-from datetime import datetime
-import asyncio
-import os
-import time
-
 
 def K_to_F(K):
     return (K - 273.15) * 9 / 5 + 32
@@ -91,8 +82,7 @@ def printscreen(info):
 
 if __name__ ==  "__main__":
     try:
-        hour = datetime.now().hour
-        info = asyncio.run(getweather())
+        info = getweather()
         printscreen(info)
         while(True):
             info = getweather()
