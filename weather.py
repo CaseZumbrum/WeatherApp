@@ -36,6 +36,7 @@ def getweather():
     for i in range(3):
         id = Forecast["list"][i]["weather"][0]["id"]
         if id // 100 == 2 or id // 100 == 3 or id // 100 == 5:
+
             if id // 100 == 2:
                 info["rain"][2] = "heavy "
             elif id // 100 == 3:
@@ -54,32 +55,27 @@ def printscreen(info):
     logging.basicConfig(level=logging.DEBUG)
 
     try:
-        #TESTING THIS RN
-        response = requests.get(f"https://openweathermap.org/img/wn/{info['icon']}@2x.png")
-        img = Image.open(requests.get(f"https://openweathermap.org/img/wn/{info['icon']}@2x.png", stream=True).raw)
-        
-        img = img.resize((200, 200))
 
-        logging.info("epd7in5_V2 Demo")
         epd = epd7in5_V2.EPD()
         epd.init()
        
-        font24 = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 50)
+        test_font = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 50)
         
 
         Himage = Image.new('1', (epd.width, epd.height), 255)  # 255: clear the frame
         draw = ImageDraw.Draw(Himage)
-        draw.text((10, 10), f'Current temp: {info["currtemp"]}', font = font24, fill = 0)
-        draw.text((10, 60), f'{info["currkind"]}', font = font24, fill = 0)
-        draw.text((10, 110), f'High: {info["high"]}', font = font24, fill = 0)
-        draw.text((10, 160), f'Low: {info["low"]}', font = font24, fill = 0)
-        draw.text((10, 210), f'Humidity: {info["currhumidity"]}', font=font24, fill=0)
-        draw.text((10, 400), info["random"], font=font24, fill=0)
+        draw.text((10, 10), f'Current temp: {info["currtemp"]}', font = test_font, fill = 0)
+        draw.text((10, 60), f'{info["currkind"]}', font = test_font, fill = 0)
+        draw.text((10, 110), f'High: {info["high"]}', font = test_font, fill = 0)
+        draw.text((10, 160), f'Low: {info["low"]}', font = test_font, fill = 0)
+        draw.text((10, 210), f'Humidity: {info["currhumidity"]}', font=test_font, fill=0)
+        draw.text((10, 400), info["random"], font=test_font, fill=0)
 
         if(info["rain"][0] == 1):
-            draw.text((10, 260), f'Chance of {info["rain"][2]}rain in about {info["rain"][1]} hours', font = font24, fill = 0)
+            draw.text((10, 260), f'Chance of {info["rain"][2]}rain in about {info["rain"][1]} hours', font = test_font, fill = 0)
 
-        #TESTING THIS RN
+        img = Image.open(requests.get(f"https://openweathermap.org/img/wn/{info['icon']}@2x.png", stream=True).raw)
+        img = img.resize((200, 200))
         Himage.paste(img, (500,20))
 
         epd.display(epd.getbuffer(Himage))
@@ -112,8 +108,7 @@ if __name__ ==  "__main__":
             
             printscreen(info)
 
-    except KeyboardInterrupt:   
-        logging.info("ctrl + c:")
+    except KeyboardInterrupt:
         epd = epd7in5_V2.EPD()
         epd.init()
         epd.Clear()
