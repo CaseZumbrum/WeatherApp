@@ -45,7 +45,7 @@ def getweather():
             info["rain"][1] = round((Forecast["list"][i]["dt"] / (3600)) - time.time() / 3600)
             break
 
-    randomEvent = [f'fog: {random.randint(0,100)}', f"Days Left: {random.randint(0,1000)}", f"Hot single moms {random.randint(0,1000)} meters away!", "Nick is hiding somewhere.", "Don't forget to change your mind today!", "WAKE UP", "Meeting with Mr. Peabody today at 4:00", "Head?"]
+    randomEvent = [f'fog: yes', "fog: no", f"Days Left: {random.randint(0,1000)}", f"Hot single moms {random.randint(0,1000)} meters away!", "Nick is hiding somewhere.", "Don't forget to change your mind today!", "WAKE UP", "Meeting with Mr. Peabody today at 4:00", "Head?"]
     info["random"] = random.choice(randomEvent)
     return info
 
