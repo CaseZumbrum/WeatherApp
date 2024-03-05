@@ -7,8 +7,6 @@ from waveshare_epd import epd7in5_V2
 from PIL import Image,ImageDraw,ImageFont
 import os
 import time
-from io import BytesIO
-import PIL.ImageChops
 import random
 
 picdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'pic')
@@ -47,6 +45,8 @@ def getweather():
             info["rain"][1] = round((Forecast["list"][i]["dt"] / (3600)) - time.time() / 3600)
             break
 
+    randomEvent = [f'fog: {random.randint(0,100)}', f"Days Left: {random.randint(0,1000)}", f"Hot single moms {random.randint(0,1000)} meters away!", "Nick is hiding somewhere.", "Don't forget to change your mind today!"]
+    info["random"] = random.choice(randomEvent)
     return info
 
 
@@ -74,10 +74,10 @@ def printscreen(info):
         draw.text((10, 110), f'High: {info["high"]}', font = font24, fill = 0)
         draw.text((10, 160), f'Low: {info["low"]}', font = font24, fill = 0)
         draw.text((10, 210), f'Humidity: {info["currhumidity"]}', font=font24, fill=0)
-        draw.text((10, 260), f'fog: {random.randint(0,100)}', font=font24, fill=0)
+        draw.text((10, 400), info["random"], font=font24, fill=0)
 
         if(info["rain"][0] == 1):
-            draw.text((10, 310), f'Chance of {info["rain"][2]}rain in about {info["rain"][1]} hours', font = font24, fill = 0)
+            draw.text((10, 260), f'Chance of {info["rain"][2]}rain in about {info["rain"][1]} hours', font = font24, fill = 0)
 
         #TESTING THIS RN
         Himage.paste(img, (500,20))
