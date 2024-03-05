@@ -28,16 +28,21 @@ def getweather():
         "http://api.openweathermap.org/data/2.5/forecast?lat=29.6520&lon=-82.3250&appid=e91b4794a9aac2f29d302a924907e5ac").json()
     info = {}
     info["currtemp"] = round(K_to_F(current["main"]["temp"]))
-    info["currkind"] = current["weather"][0]["description"]
-    info["currhumidity"] = current["main"]["humidity"]
+    info["currkind"] = current["weather"][0]["description"].upper() + current["weather"][0]["description"][1:]
+    info["currhumidity"] = current["main"]["humidity"][0]
     info["icon"] = current["weather"][0]["icon"]
     info["high"] = round(K_to_F(current["main"]["temp_max"]))
     info["low"] = round(K_to_F(current["main"]["temp_min"]))
-    info["rain"] = [0, 0]
+    info["rain"] = [0, 0, ""]
 
     for i in range(3):
         id = Forecast["list"][i]["weather"][0]["id"]
         if id // 100 == 2 or id // 100 == 3 or id // 100 == 5:
+            if id // 100 == 2:
+                info["rain"][2] = "heavy "
+            elif id // 100 == 3:
+                info["rain"][2] = "light "
+
             info["rain"][0] = 1
             info["rain"][1] = round((Forecast["list"][i]["dt"] / (3600)) - time.time() / 3600)
             break
@@ -72,7 +77,7 @@ def printscreen(info):
         draw.text((10, 260), f'fog: {random.randint(0,100)}', font=font24, fill=0)
 
         if(info["rain"][0] == 1):
-            draw.text((10, 310), f'Chance of rain in about {info["rain"][1]} hours', font = font24, fill = 0)
+            draw.text((10, 310), f'Chance of {info["rain"][2]}rain in about {info["rain"][1]} hours', font = font24, fill = 0)
 
         #TESTING THIS RN
         Himage.paste(img, (500,20))
