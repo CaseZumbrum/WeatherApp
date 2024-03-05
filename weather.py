@@ -8,6 +8,8 @@ from PIL import Image,ImageDraw,ImageFont
 import os
 import time
 from io import BytesIO
+import PIL.ImageChops
+import random
 
 picdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'pic')
 libdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'lib')
@@ -20,7 +22,7 @@ def K_to_F(K):
 
 
 def getweather():
-    current = response = requests.get(
+    current = requests.get(
         "http://api.openweathermap.org/data/2.5/weather?appid=e91b4794a9aac2f29d302a924907e5ac&q=Gainesville").json()
     Forecast = requests.get(
         "http://api.openweathermap.org/data/2.5/forecast?lat=29.6520&lon=-82.3250&appid=e91b4794a9aac2f29d302a924907e5ac").json()
@@ -49,7 +51,9 @@ def printscreen(info):
     try:
         #TESTING THIS RN
         response = requests.get(f"https://openweathermap.org/img/wn/{info['icon']}@2x.png")
-        img = Image.open(BytesIO(response.content))
+        img = Image.open(requests.get(f"https://openweathermap.org/img/wn/{info['icon']}@2x.png", stream=True).raw)
+        
+        img = img.resize((200, 200))
 
         logging.info("epd7in5_V2 Demo")
         epd = epd7in5_V2.EPD()
@@ -65,12 +69,13 @@ def printscreen(info):
         draw.text((10, 110), f'High: {info["high"]}', font = font24, fill = 0)
         draw.text((10, 160), f'Low: {info["low"]}', font = font24, fill = 0)
         draw.text((10, 210), f'Humidity: {info["currhumidity"]}', font=font24, fill=0)
+        draw.text((10, 260), f'fog: {random.randint(0,100)}', font=font24, fill=0)
 
         if(info["rain"][0] == 1):
-            draw.text((10, 260), f'Chance of rain in about {info["rain"][1]} hours', font = font24, fill = 0)
+            draw.text((10, 310), f'Chance of rain in about {info["rain"][1]} hours', font = font24, fill = 0)
 
         #TESTING THIS RN
-        Himage.paste(img, (300,300))
+        Himage.paste(img, (500,20))
 
         epd.display(epd.getbuffer(Himage))
         time.sleep(2)
