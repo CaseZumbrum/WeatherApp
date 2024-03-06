@@ -148,18 +148,3 @@ if __name__=='__main__':
     
          
 
-
-        
-
-    
-    wri.printstring(info["currkind"])
-    
-    epd.display(epd.buffer)
-    epd.delay_ms(5000)
-  
-        
-    #epd.Clear()
-    #epd.delay_ms(2000)
-    print("sleep")
-    epd.sleep()
-
