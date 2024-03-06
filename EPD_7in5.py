@@ -15,13 +15,15 @@ class EPD_7in5(framebuf.FrameBuffer):
     def __init__(self):
         self.reset_pin = Pin(RST_PIN, Pin.OUT)
         
+        
+        
+        self.spi = SPI(1)
+        self.spi.init(baudrate=4000_000)
+        
         self.busy_pin = Pin(BUSY_PIN, Pin.IN, Pin.PULL_UP)
         self.cs_pin = Pin(CS_PIN, Pin.OUT)
         self.width = EPD_WIDTH
         self.height = EPD_HEIGHT
-        
-        self.spi = SPI(1)
-        self.spi.init(baudrate=4000_000)
         self.dc_pin = Pin(DC_PIN, Pin.OUT)
         
         self.buffer = bytearray(self.height * self.width // 8)

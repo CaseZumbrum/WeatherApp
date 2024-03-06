@@ -1,42 +1,15 @@
-# *****************************************************************************
-# * | File        :	  Pico_ePaper-7.5.py
-# * | Author      :   Waveshare team
-# * | Function    :   Electronic paper driver
-# * | Info        :
-# *----------------
-# * | This version:   V1.0
-# * | Date        :   2021-05-27
-# # | Info        :   python demo
-# -----------------------------------------------------------------------------
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documnetation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to  whom the Software is
-# furished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS OR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-# THE SOFTWARE.
-#
+
 import network
 import urequests
 import json
 import framebuf
-import utime
+import time
 from EPD_7in5 import EPD_7in5
 from machine import Pin, SPI
 from writer import Writer
 import FreeSans50  # Font to use
-import random
-import time
+from random import choice, randint
+#import ntptime
 
 
 
@@ -68,19 +41,22 @@ def getweather():
                 info["rain"][2] = "light "
 
             info["rain"][0] = 1
-            info["rain"][1] = round((Forecast["list"][i]["dt"] / (3600)) - time.time() / 3600)
+            info["rain"][1] = round((Forecast["list"][i]["dt"] / (3600)) -time.time() / 3600)
             break
 
-    randomevent = [f'fog: yes', "fog: no", f"Days Left: {random.randint(0, 1000)}",
-                   f"Hot single moms {random.randint(0, 1000)} meters away!", "Nick is hiding somewhere.",
+    randomevent = [f'fog: yes', "fog: no", f"Days Left: {randint(0, 1000)}",
+                   f"Hot single moms {randint(0, 1000)} meters away!", "Nick is hiding somewhere.",
                    "Don't forget to change your mind!", "WAKE UP", "Meeting with Mr. Peabody",
                    "Head?"]
-    info["random"] = random.choice(randomevent)
+    info["random"] = choice(randomevent)
     return info
 
 
-def printscreen(epd, wri, info):
+def printscreen(info):
     try:
+        
+        epd = EPD_7in5()
+        wri = Writer(epd, FreeSans50, verbose = False)  # verbose = False to suppress console output
         
         epd.fill(0x00)
         Writer.set_textpos(epd, 10, 10)
@@ -96,13 +72,17 @@ def printscreen(epd, wri, info):
         Writer.set_textpos(epd, 400, 10)
         wri.printstring(str(info["random"]))
         
+        Writer.set_textpos(epd, 300, 10)
+        wri.printstring(str(time.time()))
+        
+        
         if(info["rain"][0] == 1):
             Writer.set_textpos(epd, 260, 10)
             wri.printstring('Chance of ' + str(info["rain"][2]) + "rain in about " + str(info["rain"][1]) + " hours")
         
         epd.display(epd.buffer)
         epd.delay_ms(2000)
-        
+        epd.sleep()
         
     except KeyboardInterrupt:
         epd.Clear()
@@ -114,37 +94,60 @@ def printscreen(epd, wri, info):
 
         
 if __name__=='__main__':
-    epd = EPD_7in5()
-    wri = Writer(epd, FreeSans50)  # verbose = False to suppress console output
+    time.sleep(10)
+    led = Pin("LED", machine.Pin.OUT)
     
+        
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
     wlan.connect("ufdevice", "gogators")
     while wlan.isconnected() == False:
         print('Waiting for connection...')
-        sleep(1)
+        time.sleep(3)
+        wlan.connect("ufdevice", "gogators")
     print("Wifi Connected")
     
     try:
+        #ntptime.settime()
         info = getweather()
-        printscreen(epd,wri,info)
+        printscreen(info)
         
+    
         while (True):
             info = getweather()
             time215minute = (60 * 15) - time.time() % (60 * 15)
             print("Waiting for " + str(time215minute))
             time.sleep(time215minute)
-            printscreen(epd,wri,info)
+            printscreen(info)
             
     except KeyboardInterrupt:
+        epd = EPD_7in5()
+        wri = Writer(epd, FreeSans50, verbose = False)  # verbose = False to suppress console output
         epd.Clear()
         epd.delay_ms(2000)
         print("sleep")
         epd.sleep()
+    except Exception as e:
+        
+        f = open("test.txt", "a")
+ 
+        # writing in the file
+        f.write(str(e) + "\n")
+         
+        # closing the file
+        f.close()
+        led.on()
+        time.sleep(5)
+        led.off()
+        
     finally:
         print("done")
+        pass
             
     
     
          
+
+
+
 
