@@ -26,241 +26,140 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-
-from machine import Pin, SPI
+import network
+import urequests
+import json
 import framebuf
 import utime
+from EPD_7in5 import EPD_7in5
+from machine import Pin, SPI
+from writer import Writer
+import FreeSans50  # Font to use
+import random
+import time
 
-# Display resolution
-EPD_WIDTH       = 800
-EPD_HEIGHT      = 480
 
-RST_PIN         = 12
-DC_PIN          = 8
-CS_PIN          = 9
-BUSY_PIN        = 13
 
-class EPD_7in5(framebuf.FrameBuffer):
-    def __init__(self):
-        self.reset_pin = Pin(RST_PIN, Pin.OUT)
+def K_to_F(K):
+    return (K - 273.15) * 9 / 5 + 32
+
+def getweather():
+    current = json.loads(urequests.get(
+        "http://api.openweathermap.org/data/2.5/weather?appid=e91b4794a9aac2f29d302a924907e5ac&q=Gainesville").text)
+    Forecast = json.loads(urequests.get(
+        "http://api.openweathermap.org/data/2.5/forecast?lat=29.6520&lon=-82.3250&appid=e91b4794a9aac2f29d302a924907e5ac").text)
+
+    info = {}
+    info["currtemp"] = round(K_to_F(current["main"]["temp"]))
+    info["currkind"] = current["weather"][0]["description"][0].upper() + current["weather"][0]["description"][1:]
+    info["currhumidity"] = current["main"]["humidity"]
+    info["icon"] = current["weather"][0]["icon"]
+    info["high"] = round(K_to_F(current["main"]["temp_max"]))
+    info["low"] = round(K_to_F(current["main"]["temp_min"]))
+    info["rain"] = [0, 0, ""]
+
+    for i in range(3):
+        id = Forecast["list"][i]["weather"][0]["id"]
+        if id // 100 == 2 or id // 100 == 3 or id // 100 == 5:
+
+            if id // 100 == 2:
+                info["rain"][2] = "heavy "
+            elif id // 100 == 3:
+                info["rain"][2] = "light "
+
+            info["rain"][0] = 1
+            info["rain"][1] = round((Forecast["list"][i]["dt"] / (3600)) - time.time() / 3600)
+            break
+
+    randomevent = [f'fog: yes', "fog: no", f"Days Left: {random.randint(0, 1000)}",
+                   f"Hot single moms {random.randint(0, 1000)} meters away!", "Nick is hiding somewhere.",
+                   "Don't forget to change your mind!", "WAKE UP", "Meeting with Mr. Peabody",
+                   "Head?"]
+    info["random"] = random.choice(randomevent)
+    return info
+
+
+def printscreen(epd, wri, info):
+    try:
         
-        self.busy_pin = Pin(BUSY_PIN, Pin.IN, Pin.PULL_UP)
-        self.cs_pin = Pin(CS_PIN, Pin.OUT)
-        self.width = EPD_WIDTH
-        self.height = EPD_HEIGHT
+        epd.fill(0x00)
+        Writer.set_textpos(epd, 10, 10)
+        wri.printstring('Current temp: ' + str(info["currtemp"]))
+        Writer.set_textpos(epd, 60, 10)
+        wri.printstring(str(info["currkind"]))
+        Writer.set_textpos(epd, 110, 10)
+        wri.printstring('High: ' + str(info["high"]))
+        Writer.set_textpos(epd, 160, 10)
+        wri.printstring('Low: ' + str(info["low"]))
+        Writer.set_textpos(epd, 210, 10)
+        wri.printstring('Humidity: ' + str(info["currhumidity"]))
+        Writer.set_textpos(epd, 400, 10)
+        wri.printstring(str(info["random"]))
         
-        self.spi = SPI(1)
-        self.spi.init(baudrate=4000_000)
-        self.dc_pin = Pin(DC_PIN, Pin.OUT)
+        if(info["rain"][0] == 1):
+            Writer.set_textpos(epd, 260, 10)
+            wri.printstring('Chance of ' + str(info["rain"][2]) + "rain in about " + str(info["rain"][1]) + " hours")
         
-        self.buffer = bytearray(self.height * self.width // 8)
-        super().__init__(self.buffer, self.width, self.height, framebuf.MONO_HLSB)
-        self.init()
-
-    def digital_write(self, pin, value):
-        pin.value(value)
-
-    def digital_read(self, pin):
-        return pin.value()
-
-    def delay_ms(self, delaytime):
-        utime.sleep(delaytime / 1000.0)
-
-    def spi_writebyte(self, data):
-        self.spi.write(bytearray(data))
-
-    def module_exit(self):
-        self.digital_write(self.reset_pin, 0)
-
-    # Hardware reset
-    def reset(self):
-        self.digital_write(self.reset_pin, 1)
-        self.delay_ms(50) 
-        self.digital_write(self.reset_pin, 0)
-        self.delay_ms(2)
-        self.digital_write(self.reset_pin, 1)
-        self.delay_ms(50)   
-
-    def send_command(self, command):
-        self.digital_write(self.dc_pin, 0)
-        self.digital_write(self.cs_pin, 0)
-        self.spi_writebyte([command])
-        self.digital_write(self.cs_pin, 1)
-
-    def send_data(self, data):
-        self.digital_write(self.dc_pin, 1)
-        self.digital_write(self.cs_pin, 0)
-        self.spi_writebyte([data])
-        self.digital_write(self.cs_pin, 1)
+        epd.display(epd.buffer)
+        epd.delay_ms(2000)
         
-    def send_data1(self, buf):
-        self.digital_write(self.dc_pin, 1)
-        self.digital_write(self.cs_pin, 0)
-        self.spi.write(bytearray(buf))
-        self.digital_write(self.cs_pin, 1)
-
-    def WaitUntilIdle(self):
-        print("e-Paper busy")
-        while(self.digital_read(self.busy_pin) == 0):    # Wait until the busy_pin goes LOW
-            self.send_command(0x71)
-            self.delay_ms(20)
-        self.delay_ms(20) 
-        print("e-Paper busy release")  
-
-    def TurnOnDisplay(self):
-        self.send_command(0x12) # DISPLAY REFRESH
-        self.delay_ms(100)      #!!!The delay here is necessary, 200uS at least!!!
-        self.WaitUntilIdle()
         
-    def init(self):
-        # EPD hardware init start     
-        self.reset()
-        
-        self.send_command(0x01)  # POWER SETTING
-        self.send_data(0x07)
-        self.send_data(0x07)     # VGH=20V,VGL=-20V
-        self.send_data(0x3f)     # VDH=15V
-        self.send_data(0x3f)     # VDL=-15V
-        
-        self.send_command(0x04)  # POWER ON
-        self.delay_ms(100)
-        self.WaitUntilIdle()
-
-        self.send_command(0X00)   # PANNEL SETTING
-        self.send_data(0x1F)      # KW-3f   KWR-2F	BWROTP 0f	BWOTP 1f
-
-        self.send_command(0x61)     # tres
-        self.send_data(0x03)     # source 800
-        self.send_data(0x20)
-        self.send_data(0x01)     # gate 480
-        self.send_data(0xE0)
-
-        self.send_command(0X15)
-        self.send_data(0x00)
-
-        self.send_command(0X50)     # VCOM AND DATA INTERVAL SETTING
-        self.send_data(0x10)
-        self.send_data(0x00)
-
-        self.send_command(0X60)     # TCON SETTING
-        self.send_data(0x22)
-
-        self.send_command(0x65)     # Resolution setting
-        self.send_data(0x00)
-        self.send_data(0x00)     # 800*480
-        self.send_data(0x00)
-        self.send_data(0x00)
-        
-        return 0;
-
-    def Clear(self):
-        
-        high = self.height
-        if( self.width % 8 == 0) :
-            wide =  self.width // 8
-        else :
-            wide =  self.width // 8 + 1
-        
-        self.send_command(0x10)
-        for i in range(0, wide):
-            self.send_data1([0xff] * high)
-                
-        self.send_command(0x13) 
-        for i in range(0, wide):
-            self.send_data1([0x00] * high)
-                
-        self.TurnOnDisplay()
-        
-    def ClearBlack(self):
-        
-        high = self.height
-        if( self.width % 8 == 0) :
-            wide =  self.width // 8
-        else :
-            wide =  self.width // 8 + 1
-        
-        self.send_command(0x10)
-        for i in range(0, wide):
-            self.send_data1([0x00] * high)
-                
-        self.send_command(0x13) 
-        for i in range(0, wide):
-            self.send_data1([0xff] * high)
-                
-        self.TurnOnDisplay()
-        
-    def display(self,blackimage):
-        
-        high = self.height
-        if( self.width % 8 == 0) :
-            wide =  self.width // 8
-        else :
-            wide =  self.width // 8 + 1
-        
-        self.send_command(0x10) 
-        for i in range(0, wide):
-            self.send_data1(blackimage[(i * high) : ((i+1) * high)])
-                
-        self.send_command(0x13) 
-        for i in range(0, wide):
-            self.send_data1(blackimage[(i * high) : ((i+1) * high)])
-                
-        self.TurnOnDisplay()
+    except KeyboardInterrupt:
+        epd.Clear()
+        epd.delay_ms(2000)
+        print("sleep")
+        epd.sleep()
 
 
-    def sleep(self):
-        self.send_command(0x02) # power off
-        self.WaitUntilIdle()
-        self.send_command(0x07) # deep sleep
-        self.send_data(0xa5)
 
+        
 if __name__=='__main__':
     epd = EPD_7in5()
-    epd.Clear()
+    wri = Writer(epd, FreeSans50)  # verbose = False to suppress console output
     
-    epd.fill(0x00)
-    print("here")
-    epd.text("Waveshare", 5, 10, 0xff)
-    epd.text("Pico_ePaper-7.5", 5, 40, 0xff)
-    epd.text("Raspberry Pico", 5, 70, 0xff)
-    epd.display(epd.buffer)
-    epd.delay_ms(5000)
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    wlan.connect("ufdevice", "gogators")
+    while wlan.isconnected() == False:
+        print('Waiting for connection...')
+        sleep(1)
+    print("Wifi Connected")
     
-    epd.vline(10, 90, 60, 0xff)
-    epd.vline(120, 90, 60, 0xff)
-    epd.hline(10, 90, 110, 0xff)
-    epd.hline(10, 150, 110, 0xff)
-    epd.line(10, 90, 120, 150, 0xff)
-    epd.line(120, 90, 10, 150, 0xff)
-    epd.display(epd.buffer)
-    epd.delay_ms(5000)
-    
-    epd.rect(10, 180, 50, 80, 0xff)
-    epd.fill_rect(70, 180, 50, 80, 0xff)
-    epd.display(epd.buffer)
-    epd.delay_ms(5000)
-    
-    epd.fill_rect(250, 150, 480, 20, 0xff)
-    epd.fill_rect(250, 310, 480, 20, 0xff)
-    epd.fill_rect(400, 0, 20, 480, 0xff)
-    epd.fill_rect(560, 0, 20, 480, 0xff)
-
-    for j in range(0, 3):
-        for i in range(0, 15):
-            epd.line(270+j*160+i, 20+j*160, 375+j*160+i, 140+j*160, 0xff)
-        for i in range(0, 15):
-            epd.line(375+j*160+i, 20+j*160, 270+j*160+i, 140+j*160, 0xff)
-        for i in range(0, 15):
-            epd.line(270+j*160, 20+j*160+i, 390+j*160, 125+j*160+i, 0xff)
-        for i in range(0, 15):
-            epd.line(270+j*160, 125+j*160+i, 390+j*160, 20+j*160+i, 0xff)        
-    epd.fill_rect(270, 190, 100, 100, 0xff)
-    epd.fill_rect(270, 350, 100, 100, 0xff)
-    epd.display(epd.buffer)
-    epd.delay_ms(5000)
+    try:
+        info = getweather()
+        printscreen(epd,wri,info)
         
-    epd.Clear()
-    epd.delay_ms(2000)
+        while (True):
+            info = getweather()
+            time215minute = (60 * 15) - time.time() % (60 * 15)
+            print("Waiting for " + str(time215minute))
+            time.sleep(time215minute)
+            printscreen(epd,wri,info)
+            
+    except KeyboardInterrupt:
+        epd.Clear()
+        epd.delay_ms(2000)
+        print("sleep")
+        epd.sleep()
+    finally:
+        print("done")
+            
+    
+    
+         
+
+
+        
+
+    
+    wri.printstring(info["currkind"])
+    
+    epd.display(epd.buffer)
+    epd.delay_ms(5000)
+  
+        
+    #epd.Clear()
+    #epd.delay_ms(2000)
     print("sleep")
     epd.sleep()
 

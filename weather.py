@@ -28,8 +28,8 @@ def getweather():
 
     info = {}
     info["currtemp"] = round(K_to_F(current["main"]["temp"]))
-    info["currkind"] = current["weather"][0]["description"].upper() + current["weather"][0]["description"][1:]
-    info["currhumidity"] = current["main"]["humidity"][0]
+    info["currkind"] = current["weather"][0]["description"][0].upper() + current["weather"][0]["description"][1:]
+    info["currhumidity"] = current["main"]["humidity"]
     info["icon"] = current["weather"][0]["icon"]
     info["high"] = round(K_to_F(current["main"]["temp_max"]))
     info["low"] = round(K_to_F(current["main"]["temp_min"]))
