@@ -1,28 +1,40 @@
 
+from EPD_7in5 import EPD_7in5
+epd = EPD_7in5()
+from writer import Writer
+import FreeSans50  # Font to use
+wri = Writer(epd, FreeSans50, verbose = False)  # verbose = False to suppress console output
+
 import network
 import urequests
 import json
 import framebuf
-import time
-from EPD_7in5 import EPD_7in5
+from time import sleep
+
 from machine import Pin, SPI
-from writer import Writer
-import FreeSans50  # Font to use
+
+
 from random import choice, randint
-#import ntptime
+import gc
 
 
+
+
+#def gettime():
+#    return int(json.loads(urequests.get("http://worldtimeapi.org/api/timezone/America/New_York").text)["unixtime"])
 
 def K_to_F(K):
     return (K - 273.15) * 9 / 5 + 32
 
 def getweather():
+
     current = json.loads(urequests.get(
         "http://api.openweathermap.org/data/2.5/weather?appid=e91b4794a9aac2f29d302a924907e5ac&q=Gainesville").text)
     Forecast = json.loads(urequests.get(
         "http://api.openweathermap.org/data/2.5/forecast?lat=29.6520&lon=-82.3250&appid=e91b4794a9aac2f29d302a924907e5ac").text)
 
     info = {}
+    info["time"] = int(json.loads(urequests.get("http://worldtimeapi.org/api/timezone/America/New_York").text)["unixtime"])
     info["currtemp"] = round(K_to_F(current["main"]["temp"]))
     info["currkind"] = current["weather"][0]["description"][0].upper() + current["weather"][0]["description"][1:]
     info["currhumidity"] = current["main"]["humidity"]
@@ -31,7 +43,7 @@ def getweather():
     info["low"] = round(K_to_F(current["main"]["temp_min"]))
     info["rain"] = [0, 0, ""]
 
-    for i in range(3):
+    for i in range(2):
         id = Forecast["list"][i]["weather"][0]["id"]
         if id // 100 == 2 or id // 100 == 3 or id // 100 == 5:
 
@@ -41,7 +53,7 @@ def getweather():
                 info["rain"][2] = "light "
 
             info["rain"][0] = 1
-            info["rain"][1] = round((Forecast["list"][i]["dt"] / (3600)) -time.time() / 3600)
+            info["rain"][1] = round((Forecast["list"][i]["dt"] / (3600)) - info["time"] / 3600)
             break
 
     randomevent = [f'fog: yes', "fog: no", f"Days Left: {randint(0, 1000)}",
@@ -49,14 +61,18 @@ def getweather():
                    "Don't forget to change your mind!", "WAKE UP", "Meeting with Mr. Peabody",
                    "Head?"]
     info["random"] = choice(randomevent)
+    
+    gc.collect()
     return info
 
 
 def printscreen(info):
     try:
+        gc.collect()
+        sleep(1)
+        print(gc.mem_free())
+
         
-        epd = EPD_7in5()
-        wri = Writer(epd, FreeSans50, verbose = False)  # verbose = False to suppress console output
         
         epd.fill(0x00)
         Writer.set_textpos(epd, 10, 10)
@@ -72,8 +88,7 @@ def printscreen(info):
         Writer.set_textpos(epd, 400, 10)
         wri.printstring(str(info["random"]))
         
-        Writer.set_textpos(epd, 300, 10)
-        wri.printstring(str(time.time()))
+        
         
         
         if(info["rain"][0] == 1):
@@ -82,9 +97,10 @@ def printscreen(info):
         
         epd.display(epd.buffer)
         epd.delay_ms(2000)
-        epd.sleep()
+        #epd.sleep()
         
     except KeyboardInterrupt:
+        
         epd.Clear()
         epd.delay_ms(2000)
         print("sleep")
@@ -94,7 +110,7 @@ def printscreen(info):
 
         
 if __name__=='__main__':
-    time.sleep(10)
+    sleep(10)
     led = Pin("LED", machine.Pin.OUT)
     
         
@@ -103,26 +119,28 @@ if __name__=='__main__':
     wlan.connect("ufdevice", "gogators")
     while wlan.isconnected() == False:
         print('Waiting for connection...')
-        time.sleep(3)
+        sleep(3)
         wlan.connect("ufdevice", "gogators")
     print("Wifi Connected")
     
+    
+    
     try:
-        #ntptime.settime()
         info = getweather()
-        printscreen(info)
         
+        printscreen(info)
+    
     
         while (True):
             info = getweather()
-            time215minute = (60 * 15) - time.time() % (60 * 15)
+            
+            time215minute = (60 * 15) - info["time"] % (60 * 15)
             print("Waiting for " + str(time215minute))
-            time.sleep(time215minute)
+            sleep(time215minute)
             printscreen(info)
             
     except KeyboardInterrupt:
-        epd = EPD_7in5()
-        wri = Writer(epd, FreeSans50, verbose = False)  # verbose = False to suppress console output
+        
         epd.Clear()
         epd.delay_ms(2000)
         print("sleep")
@@ -137,7 +155,7 @@ if __name__=='__main__':
         # closing the file
         f.close()
         led.on()
-        time.sleep(5)
+        sleep(5)
         led.off()
         
     finally:
